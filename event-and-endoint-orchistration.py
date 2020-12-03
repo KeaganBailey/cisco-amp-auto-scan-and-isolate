@@ -17,9 +17,6 @@ def main():
     # Getting configuration info
     CONFIG_INFO = get_json_data(CONFIG_FILE_PATH)
 
-    # Setting email info
-    SUPPORT_EMAIL = CONFIG_INFO.emails.support_email
-
     # Setting malicious event types
     LIST_OF_MALICIOUS_EVENT_TYPES = CONFIG_INFO.event_types_to_trigger_isolation_and_scan
 
@@ -43,13 +40,13 @@ def main():
                     if event['connector_guid'] + "\n" not in endpoints_currently_scanning: # Avoids running a 2nd scan if another is already running 
                         start_full_scan(event['connector_guid'], AMP_ID, AMP_KEY)
                         start_isolation(event['connector_guid'], AMP_ID, AMP_KEY)
-                        email_alert(SUPPORT_EMAIL, ("Starting Full Scan - " + event['event_type']), event['computer'])
+                        email_alert(CONFIG_INFO, ("Starting Full Scan - " + event['event_type']), event['computer'])
                         append_to_end_of_file(ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH, event['connector_guid'])
                 elif event['event_type'] == "Scan Completed, No Detections":
                     stop_isolation(['connector_guid'],AMP_ID, AMP_KEY)
                     remove_from_file(ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH, event['connector_guid'])
                 elif event['event_type'] == "Scan Completed With Detections":
-                    email_alert(SUPPORT_EMAIL, "Scan Completed With Detections", event['computer'])
+                    email_alert(CONFIG_INFO, "Scan Completed With Detections", event['computer'])
                     remove_from_file(ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH, event['connector_guid'])
         
         # Updates the last run time for the next loop to reference
@@ -123,15 +120,15 @@ def remove_from_file(file, string):
         f.truncate()
     
 
-def email_alert(email, alert, computer_info):
+def email_alert(CONFIG_INFO, alert, computer_info):
     email_body = "<h1>Alert for " + computer_info['hostname'] + "</h1><h2>" + alert + "</h2><br><br><b>Computer Info:</b><br><i>" + \
                     re.sub(r'[[\]{}]', '', (str(computer_info)).replace(',', '<br>')) + "</i>" # re cleans up all leftover [] and {} in the JSON
     msg = EmailMessage()
-    msg['From'] = "no-reply@cohencpa.com"
-    msg['To'] = email
+    msg['From'] = CONFIG_INFO.email.from_email
+    msg['To'] = CONFIG_INFO.email.to_email
     msg['Subject'] = f'Alert from amp-autoscan-and-isolation'
     msg.set_content(email_body, 'html')
-    s = smtplib.SMTP('mail.cohencpa.com')
+    s = smtplib.SMTP(CONFIG_INFO.email.email_server)
     s.send_message(msg)
     s.quit()
 
