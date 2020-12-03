@@ -1,6 +1,8 @@
 {
-    "emails":{
-        "support_email": "support@example.com"
+    "email":{
+        "email_server":"mail.example.com",
+        "from_email":"no-reply@example.com",
+        "to_email": "support@example.com"
     },
     "credentials":{
         "amp":{
