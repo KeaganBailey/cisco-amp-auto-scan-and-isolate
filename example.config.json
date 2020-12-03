@@ -1,0 +1,20 @@
+{
+    "emails":{
+        "support_email": "support@example.com"
+    },
+    "credentials":{
+        "amp":{
+            "id": "1234567890abcdefghij",
+            "key": "12345678-90ab-cdef-ghij-klmnopqrstuv"
+        }
+    },
+    "event_types_to_trigger_isolation_and_scan":[
+        "Execution Blocked", "Rootkit Detection", "DFC Threat Detection", "Malicious Activity Detection", "System Process Protection", "Potential Dropper Infection", 
+        "Multiple Infected Files", "Adobe Reader compromise", "Microsoft Word compromise", "Microsoft Excel compromise", "Microsoft PowerPoint compromise", 
+        "Adobe Reader launched a shell", "Microsoft Word launched a shell", "Microsoft Excel launched a shell", "Microsoft Powerpoint launched a shell", 
+        "Apple QuickTime compromise", "Apple QuickTime launched a shell", "Executed Malware", "Suspected botnet connection", "Clout IOC", "Microsoft Calculator compromise", 
+        "Microsoft Notepad compromise", "Connected to suspicious domain", "Threat Detected in Low Prevalence Executable", "Suspicious Download", 
+        "Microsoft CHM Compromise", "Suspicious Cscript Launch", "Possible Webshell", "Potential Ransomware", "Quarantine Failure", "Retrospective Quarantine Successful", 
+        "Retrospective Quarantine Attempt Failed"
+    ]
+}
