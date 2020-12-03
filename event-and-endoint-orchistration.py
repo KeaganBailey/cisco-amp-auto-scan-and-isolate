@@ -35,14 +35,8 @@ def main():
         # The main act of the show
         amp_events = get_Amp_Events(amp_id, amp_key)
 
-        # "Debugging"
-        # print("Last Run Time:", last_run_time)
-        # print("Current Run Time:", current_run_time)
-        # print(amp_events.version)
-
         for event in amp_events.data:
-            # commented out for testing/debugging malicious events section 
-            #if int(event['timestamp']) > int(last_run_time): # Only run against events that havent already been checked
+            if int(event['timestamp']) > int(last_run_time): # Only run against events that havent already been checked
                 if event['event_type'] in list_of_malicious_event_types:
                     with open(endpoints_currently_scanning_file, 'r') as f: # Runs every loop so that multiple events that would trigger scan/isolation in quick succession (within the same last run / current run delta) dont trigger multiple scan/isolation events and emails
                         endpoints_currently_scanning = f.readlines()
@@ -63,7 +57,6 @@ def main():
 
         # Wait until next cycle
         time.sleep(60) # 1 minute wait before looping
-        print("loop starting")
      
 
 def get_Last_Run_Time(last_run_time_file):
