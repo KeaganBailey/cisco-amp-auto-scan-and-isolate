@@ -10,110 +10,110 @@ import re
 
 def main():
     # Getting locally stored data
-    config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-    last_run_time_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_run_time.txt")
-    endpoints_currently_scanning_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "endpoints_currently_scanning")
+    CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    LAST_RUN_TIME_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_run_time.txt")
+    ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "endpoints_currently_scanning")
 
     # Getting configuration info
-    config_info = get_Json_Data(config_file)
+    CONFIG_INFO = get_json_data(CONFIG_FILE_PATH)
 
     # Setting email info
-    support_email = config_info.emails.support_email
+    SUPPORT_EMAIL = CONFIG_INFO.emails.support_email
 
     # Setting malicious event types
-    list_of_malicious_event_types = config_info.event_types_to_trigger_isolation_and_scan
+    LIST_OF_MALICIOUS_EVENT_TYPES = CONFIG_INFO.event_types_to_trigger_isolation_and_scan
 
     # Setting API credentials
-    amp_id = config_info.credentials.amp.id
-    amp_key = config_info.credentials.amp.key
+    AMP_ID = CONFIG_INFO.credentials.amp.id
+    AMP_KEY = CONFIG_INFO.credentials.amp.key
     
     while True:
         # Setting time values
-        last_run_time = get_Last_Run_Time(last_run_time_file_path)
-        current_run_time = get_Current_Time()
+        last_run_time = get_last_run_time(LAST_RUN_TIME_FILE_PATH)
+        current_run_time = get_current_time()
         
         # The main act of the show
-        amp_events = get_Amp_Events(amp_id, amp_key)
+        amp_events = get_amp_events(AMP_ID, AMP_KEY)
 
         for event in amp_events.data:
-            if int(event['timestamp']) > int(last_run_time): # Only run against events that havent already been checked
-                if event['event_type'] in list_of_malicious_event_types:
-                    with open(endpoints_currently_scanning_file, 'r') as f: # Runs every loop so that multiple events that would trigger scan/isolation in quick succession (within the same last run / current run delta) dont trigger multiple scan/isolation events and emails
+            if int(event['timestamp']) > int(last_run_time): # Only run against events that havent already been checked (current time delta)
+                if event['event_type'] in LIST_OF_MALICIOUS_EVENT_TYPES:
+                    with open(ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH, 'r') as f: # Keeps mutiple events in the current time delta from triggering multiple scans
                         endpoints_currently_scanning = f.readlines()
-                    if event['connector_guid'] + "\n" not in endpoints_currently_scanning: # avoids running these commands twice if a previous event already triggered isolation/scan, but scan did not complete yet.
-                        startFullScan(event['connector_guid'], amp_id, amp_key)
-                        startIsolation(event['connector_guid'], amp_id, amp_key)
-                        emailAlert(support_email, ("Starting Full Scan - " + event['event_type']), event['computer'])
-                        appendToEndOfFile(endpoints_currently_scanning_file, event['connector_guid'])
+                    if event['connector_guid'] + "\n" not in endpoints_currently_scanning: # Avoids running a 2nd scan if another is already running 
+                        start_full_scan(event['connector_guid'], AMP_ID, AMP_KEY)
+                        start_isolation(event['connector_guid'], AMP_ID, AMP_KEY)
+                        email_alert(SUPPORT_EMAIL, ("Starting Full Scan - " + event['event_type']), event['computer'])
+                        append_to_end_of_file(ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH, event['connector_guid'])
                 elif event['event_type'] == "Scan Completed, No Detections":
-                    stopIsolation(['connector_guid'],amp_id, amp_key)
-                    removeFromFile(endpoints_currently_scanning_file, event['connector_guid'])
+                    stop_isolation(['connector_guid'],AMP_ID, AMP_KEY)
+                    remove_from_file(ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH, event['connector_guid'])
                 elif event['event_type'] == "Scan Completed With Detections":
-                    emailAlert(support_email, "Scan Completed With Detections", event['computer'])
-                    removeFromFile(endpoints_currently_scanning_file, event['connector_guid'])
+                    email_alert(SUPPORT_EMAIL, "Scan Completed With Detections", event['computer'])
+                    remove_from_file(ENDPOINTS_CURRENTLY_SCANNING_FILE_PATH, event['connector_guid'])
         
         # Updates the last run time for the next loop to reference
-        update_Last_Run_Time(last_run_time_file_path, current_run_time)
+        update_last_run_time(LAST_RUN_TIME_FILE_PATH, current_run_time)
 
         # Wait until next cycle
         time.sleep(60) # 1 minute wait before looping
      
 
-def get_Last_Run_Time(last_run_time_file):
+def get_last_run_time(last_run_time_file):
     if not (os.path.isfile(last_run_time_file)):
         f = open(last_run_time_file, "w")
         f.write("847584000")
         f.close()
-
     return open(last_run_time_file, "r").read()
 
 
-def get_Current_Time():
+def get_current_time():
     return str(int(time.time())) #  returns a unix timestamp that looks like: 1606920204 
 
 
-def update_Last_Run_Time(last_run_time_file, updated_time):
+def update_last_run_time(last_run_time_file, updated_time):
     f = open(last_run_time_file, "w")
     f.write(updated_time)
     f.close()
 
 
-def get_Json_Data(file):
+def get_json_data(file):
     with open(file) as json_file:
-        data = json.load(json_file,object_hook=json_Decoder) # works with the json_Decoder function
+        data = json.load(json_file,object_hook=json_decoder) # works with the json_decoder function
     return data
 
 
-def json_Decoder(dictionary):
+def json_decoder(dictionary):
     return namedtuple('X', dictionary.keys())(*dictionary.values())
 
 
-def get_Amp_Events(amp_id, amp_key):
-    return json_Decoder((requests.get('https://api.amp.cisco.com/v1/events', auth=HTTPBasicAuth(amp_id, amp_key))).json())
+def get_amp_events(AMP_ID, AMP_KEY):
+    return json_decoder((requests.get('https://api.amp.cisco.com/v1/events', auth=HTTPBasicAuth(AMP_ID, AMP_KEY))).json())
 
 
-def startIsolation(guid, amp_id, amp_key):
+def start_isolation(guid, AMP_ID, AMP_KEY):
     pass
     #url = "https://api.amp.cisco.com/v1/computers/{}/isolation".format(guid)
-    #requests.put(url, auth=HTTPBasicAuth(amp_id, amp_key))
+    #requests.put(url, auth=HTTPBasicAuth(AMP_ID, AMP_KEY))
 
 
-def stopIsolation(guid, amp_id, amp_key):
+def stop_isolation(guid, AMP_ID, AMP_KEY):
     pass
     #url = "https://api.amp.cisco.com/v1/computers/{}/isolation".format(guid)
-    #requests.delete(url, auth=HTTPBasicAuth(amp_id, amp_key))
+    #requests.delete(url, auth=HTTPBasicAuth(AMP_ID, AMP_KEY))
 
-def startFullScan(guid, amp_id, amp_key):
+
+def start_full_scan(guid, AMP_ID, AMP_KEY):
     pass # https://i.imgur.com/kBrDBwb.jpg
 
 
-def appendToEndOfFile(file, string):
+def append_to_end_of_file(file, string):
     with open(file,'a') as f:
         f.write(string + "\n")
         f.close()
 
 
-def removeFromFile(file, string):
+def remove_from_file(file, string):
     with open(file, 'r+') as f:
         lines = f.readlines()
         f.seek(0)
@@ -123,8 +123,9 @@ def removeFromFile(file, string):
         f.truncate()
     
 
-def emailAlert(email, alert, computer_info):
-    email_body = "<h1>Alert for " + computer_info['hostname'] + "</h1><h2>" + alert + "</h2><br><br><b>Computer Info:</b><br><i>" + re.sub('[[\]{}]', '', (str(computer_info)).replace(',', '<br>')) + "</i>"
+def email_alert(email, alert, computer_info):
+    email_body = "<h1>Alert for " + computer_info['hostname'] + "</h1><h2>" + alert + "</h2><br><br><b>Computer Info:</b><br><i>" + \
+                    re.sub(r'[[\]{}]', '', (str(computer_info)).replace(',', '<br>')) + "</i>" # re cleans up all leftover [] and {} in the JSON
     msg = EmailMessage()
     msg['From'] = "no-reply@cohencpa.com"
     msg['To'] = email
